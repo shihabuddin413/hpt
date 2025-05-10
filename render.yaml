@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: hello-telegram-bot
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python main.py"
+    envVars:
+      - key:  TELEGRAM_TOKEN
+        value: 7746032917:AAEmYx1KsXOtMCv0P2hAE3zwMI3ApmKL_o0
