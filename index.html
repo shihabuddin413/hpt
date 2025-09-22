@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeFlow - Trading App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .animate-pulse-green { animation: pulse-green 2s infinite; }
+        @keyframes pulse-green {
+          0%, 100% { background-color: rgb(34, 197, 94); }
+          50% { background-color: rgb(22, 163, 74); }
+        }
+        .animate-pulse-red { animation: pulse-red 2s infinite; }
+        @keyframes pulse-red {
+          0%, 100% { background-color: rgb(239, 68, 68); }
+          50% { background-color: rgb(220, 38, 38); }
+        }
+        .tab-content { 
+            display: none !important; 
+            height: 100%;
+            overflow-y: auto;
+        }
+        .tab-content.active { 
+            display: flex !important; 
+            flex-direction: column !important;
+        }
+        .safe-area { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+</head>
+<body id="appBody" class="bg-gray-900 text-white overflow-hidden h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-green-600 via-green-500 to-emerald-500 text-white p-4 flex-shrink-0 shadow-lg">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-md transform rotate-12">
+                    <span class="text-green-600 font-bold text-xl transform -rotate-12">₿</span>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide">TradeFlow</h1>
+                    <div class="text-xs opacity-80">Professional Trading</div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="text-right bg-white bg-opacity-10 rounded-lg px-3 py-2 backdrop-blur-sm">
+                    <div class="text-xs opacity-90 font-medium">Portfolio Value</div>
+                    <div class="font-bold text-lg" id="portfolioValue">$127,543.21</div>
+                </div>
+                <div class="w-10 h-10 bg-gradient-to-br from-white to-gray-100 rounded-full flex items-center justify-center shadow-md">
+                    <span class="text-sm font-bold text-green-600">JD</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 overflow-hidden pb-16">
+        <!-- Tab Content: Chart -->
+        <div id="chartTab" class="tab-content active h-full flex flex-col p-4 overflow-y-auto">
+            <!-- Market Overview -->
+            <div class="grid grid-cols-3 gap-2 mb-4 flex-shrink-0">
+                <div class="bg-gray-800 rounded-lg p-3">
+                    <div class="text-xs text-gray-400">S&P 500</div>
+                    <div class="text-sm font-bold">4,127.83</div>
+                    <div class="text-xs text-green-400">+1.24%</div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-3">
+                    <div class="text-xs text-gray-400">NASDAQ</div>
+                    <div class="text-sm font-bold">12,658.19</div>
+                    <div class="text-xs text-red-400">-0.87%</div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-3">
+                    <div class="text-xs text-gray-400">DOW</div>
+                    <div class="text-sm font-bold">33,745.40</div>
+                    <div class="text-xs text-green-400">+0.45%</div>
+                </div>
+            </div>
+
+            <!-- Selected Asset Details & Chart -->
+            <div class="bg-gray-800 rounded-lg p-4 mb-4 flex-shrink-0">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h2 class="text-lg font-bold" id="homeSelectedSymbol">AAPL</h2>
+                        <div class="text-xs text-gray-400" id="homeSelectedName">Apple Inc.</div>
+                        <div class="text-xs text-blue-400 mt-1" id="homeSelectedType">Stock</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xl font-bold" id="homeSelectedPrice">$175.43</div>
+                        <div class="text-sm text-green-400" id="homeSelectedChange">+2.34 (+1.35%)</div>
+                    </div>
+                </div>
+                
+                <!-- Chart -->
+                <div class="h-48 mb-4">
+                    <canvas id="priceChart" class="w-full h-full"></canvas>
+                </div>
+                
+                <div class="flex space-x-2 mb-3">
+                    <button class="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded-lg" onclick="updateTimeframe('1D')">1D</button>
+                    <button class="px-3 py-1 text-xs bg-green-600 text-white rounded-lg" onclick="updateTimeframe('1W')">1W</button>
+                    <button class="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded-lg" onclick="updateTimeframe('1M')">1M</button>
+                    <button class="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded-lg" onclick="updateTimeframe('1Y')">1Y</button>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="quickTradeFromHome('buy')" class="bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+                        Buy
+                    </button>
+                    <button onclick="quickTradeFromHome('sell')" class="bg-red-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
+                        Sell
+                    </button>
+                    <button onclick="addToWatchlist()" class="bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                        Watch
+                    </button>
+                </div>
+            </div>
+
+            <!-- Asset Search & Filter -->
+            <div class="bg-gray-800 rounded-lg p-4 mb-4 flex-shrink-0">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-bold">All Assets</h3>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="toggleAssetSearch()" class="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-300 hover:bg-gray-600" id="assetSearchBtn">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Search Input -->
+                <div id="assetSearchContainer" class="mb-3 hidden">
+                    <input type="text" placeholder="Search assets..." class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent" id="assetSearchInput" oninput="filterAllAssets()">
+                </div>
+                
+                <!-- Asset Type Filters -->
+                <div class="flex space-x-2 mb-4 overflow-x-auto">
+                    <button onclick="switchAssetFilter('all')" class="px-3 py-2 text-xs bg-green-600 text-white rounded-lg whitespace-nowrap" id="allFilterBtn">All</button>
+                    <button onclick="switchAssetFilter('stock')" class="px-3 py-2 text-xs bg-gray-700 text-gray-300 rounded-lg whitespace-nowrap" id="stockFilterBtn">📈 Stocks</button>
+                    <button onclick="switchAssetFilter('crypto')" class="px-3 py-2 text-xs bg-gray-700 text-gray-300 rounded-lg whitespace-nowrap" id="cryptoFilterBtn">₿ Crypto</button>
+                    <button onclick="switchAssetFilter('forex')" class="px-3 py-2 text-xs bg-gray-700 text-gray-300 rounded-lg whitespace-nowrap" id="forexFilterBtn">💱 Forex</button>
+                    <button onclick="switchAssetFilter('commodity')" class="px-3 py-2 text-xs bg-gray-700 text-gray-300 rounded-lg whitespace-nowrap" id="commodityFilterBtn">🥇 Commodities</button>
+                </div>
+                
+                <!-- Asset Navigation -->
+                <div class="flex justify-between items-center mb-3">
+                    <div class="text-sm text-gray-400" id="assetCount">Showing 1-20 of 100 assets</div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="previousAssetPage()" class="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-300 hover:bg-gray-600" id="prevAssetBtn">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        <span class="text-sm text-gray-400" id="assetPageIndicator">1/5</span>
+                        <button onclick="nextAssetPage()" class="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-300 hover:bg-gray-600" id="nextAssetBtn">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Asset List -->
+            <div id="allAssetsList" class="space-y-2 flex-1">
+                <!-- Assets will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Tab Content: Trade -->
+        <div id="tradeTab" class="tab-content h-full flex flex-col p-4 overflow-y-auto">
+            <!-- Asset Categories -->
+            <div class="flex space-x-2 mb-4 flex-shrink-0">
+                <button onclick="switchAssetCategory('stocks')" class="px-3 py-2 text-xs bg-green-600 text-white rounded-lg" id="stocksBtn">Stocks</button>
+                <button onclick="switchAssetCategory('crypto')" class="px-3 py-2 text-xs bg-gray-700 text-gray-300 rounded-lg" id="cryptoBtn">Crypto</button>
+                <button onclick="switchAssetCategory('forex')" class="px-3 py-2 text-xs bg-gray-700 text-gray-300 rounded-lg" id="forexBtn">Forex</button>
+                <button onclick="switchAssetCategory('commodities')" class="px-3 py-2 text-xs bg-gray-700 text-gray-300 rounded-lg" id="commoditiesBtn">Commodities</button>
+            </div>
+
+            <!-- Asset Selection -->
+            <div class="bg-gray-800 rounded-lg p-4 mb-4 flex-shrink-0">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold">Select Asset</h3>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="toggleSearch()" class="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center text-gray-300 hover:bg-gray-600" id="searchBtn">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        <button onclick="previousAssets()" class="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center text-gray-300 hover:bg-gray-600" id="prevBtn">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        <span class="text-xs text-gray-400" id="pageIndicator">1/2</span>
+                        <button onclick="nextAssets()" class="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center text-gray-300 hover:bg-gray-600" id="nextBtn">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Search Dropdown -->
+                <div id="searchContainer" class="mb-3 hidden">
+                    <div class="relative">
+                        <input type="text" placeholder="Search assets..." class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent" id="searchInput" oninput="filterAssets()">
+                        <div id="searchResults" class="absolute top-full left-0 right-0 bg-gray-700 border border-gray-600 rounded-lg mt-1 max-h-32 overflow-y-auto z-10 hidden">
+                            <!-- Search results will appear here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="assetList" class="grid grid-cols-2 gap-2">
+                    <!-- Assets will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Selected Asset Info & Mini Chart -->
+            <div class="bg-gray-800 rounded-lg p-4 mb-4 flex-shrink-0">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h3 class="text-lg font-bold" id="selectedSymbol">AAPL</h3>
+                        <div class="text-xs text-gray-400" id="selectedName">Apple Inc.</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-lg font-bold" id="selectedPrice">$175.43</div>
+                        <div class="text-xs text-green-400" id="selectedChange">+2.34 (+1.35%)</div>
+                    </div>
+                </div>
+                
+                <!-- Chart View Toggle -->
+                <div class="flex space-x-2 mb-3">
+                    <button onclick="switchChartView('simple')" class="px-3 py-1 text-xs bg-green-600 text-white rounded-lg" id="simpleChartBtn">Simple</button>
+                    <button onclick="switchChartView('advanced')" class="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded-lg" id="advancedChartBtn">Advanced</button>
+                </div>
+                
+                <!-- Mini Chart -->
+                <div class="h-24 mb-3">
+                    <canvas id="miniChart" class="w-full h-full"></canvas>
+                </div>
+            </div>
+
+            <!-- Trading Form -->
+            <div class="bg-gray-800 rounded-lg p-4 flex-shrink-0">
+                <h3 class="text-lg font-bold mb-4">Quick Trade</h3>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Quantity</label>
+                            <input type="number" value="10" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-green-500 focus:border-transparent" id="tradeQuantity">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Price</label>
+                            <input type="number" value="175.43" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-green-500 focus:border-transparent" id="tradePrice">
+                        </div>
+                    </div>
+                    <div class="text-center text-sm text-gray-400">
+                        Total: $<span id="tradeTotal">1754.30</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button class="animate-pulse-green text-white py-3 rounded-lg font-medium" onclick="executeTrade('buy')">
+                            BUY
+                        </button>
+                        <button class="animate-pulse-red text-white py-3 rounded-lg font-medium" onclick="executeTrade('sell')">
+                            SELL
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Content: Portfolio -->
+        <div id="portfolioTab" class="tab-content h-full flex flex-col p-4 overflow-y-auto">
+            <!-- Portfolio Summary Cards -->
+            <div class="grid grid-cols-2 gap-3 mb-4 flex-shrink-0">
+                <!-- Total Value Card -->
+                <div class="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-4 text-white relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-20 h-20 bg-white bg-opacity-10 rounded-full -mr-10 -mt-10"></div>
+                    <div class="relative z-10">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
+                            </svg>
+                            <span class="text-sm font-medium opacity-90">Portfolio Value</span>
+                        </div>
+                        <div class="text-2xl font-bold" id="portfolioValue">$127,543.21</div>
+                        <div class="text-sm opacity-80">+$12,543 today</div>
+                    </div>
+                </div>
+
+                <!-- Performance Card -->
+                <div class="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-xl p-4 text-white relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-20 h-20 bg-white bg-opacity-10 rounded-full -mr-10 -mt-10"></div>
+                    <div class="relative z-10">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/>
+                            </svg>
+                            <span class="text-sm font-medium opacity-90">Performance</span>
+                        </div>
+                        <div class="t
